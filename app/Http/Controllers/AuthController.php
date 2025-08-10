@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Services\ApiResponse;
 use Illuminate\Http\Request;
 
 class AuthController extends Controller
@@ -22,9 +23,7 @@ class AuthController extends Controller
             "password" => $password
         ]);
         if(!$attempt){
-            return response()->json([
-                "error" => "Invalid credentials"
-            ],401);
+            return ApiResponse::unauthorized();
         }
 
         //authenticated user
@@ -32,6 +31,10 @@ class AuthController extends Controller
         $token = $user->createToken($user->name)->plainTextToken;
 
         // return the access token for the api requests
-        return response()->json(["token" => $token],200);
+        return ApiResponse::success([
+            "user" => $user->name,
+            "email" => $user->email,
+            "token" => $token
+        ]);
     }
 }
