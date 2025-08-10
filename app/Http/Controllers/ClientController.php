@@ -47,7 +47,20 @@ class ClientController extends Controller
      */
     public function show(string $id)
     {
-        //
+        // show client details by id
+        $client = Client::find($id);
+
+        // retorn response
+        if ($client){
+            return response()->json($client, 200);
+        } else {
+            return response()->json(
+                [
+                    "message" => "Client not found"
+                ],
+                404
+            );
+        }
     }
 
     /**
