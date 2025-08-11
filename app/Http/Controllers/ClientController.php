@@ -2,124 +2,84 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Services\ApiResponse;
 use App\Models\Client;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class ClientController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Lista os clientes de forma paginada para melhor performance.
      */
     public function index()
     {
-        // return all clients in the database
-        return response()->json(Client::all(),200);
+       
+        $clients = Client::paginate(15);
+
+        return ApiResponse::success($clients);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Armazena um novo cliente no banco de dados.
      */
     public function store(Request $request)
     {
-        // vaidate the request
-        $request->validate(
-            [
-                "name" => "required",
-                "email" => "required|email|unique:clients",
-                "phone" => "required",
-            ]
-        );
+        try {
+            $validatedData = $request->validate([
+                "name" => "required|string|max:255",
+                "email" => "required|email|unique:clients,email",
+                "phone" => "required|string|max:20",
+            ]);
 
-        // add a new client to the database
-        $client = Client::create($request->all());
+            $client = Client::create($validatedData);
 
-        return response()->json(
-            [
-                "message" => "Client created successfully",
-                "client" => $client
-            ],
-            200
-        );
-    }
+            return ApiResponse::created($client);
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        // show client details by id
-        $client = Client::find($id);
-
-        // retorn response
-        if ($client){
-            return response()->json($client, 200);
-        } else {
-            return response()->json(
-                [
-                    "message" => "Client not found"
-                ],
-                404
-            );
+        } catch (ValidationException $e) {
+            return ApiResponse::validationError($e->errors());
         }
     }
 
     /**
-     * Update the specified resource in storage.
+     * Exibe um cliente específico.
+     * Graças ao Route Model Binding, o Laravel já nos entrega a instância de Client
+     * ou retorna um erro 404 se não for encontrado.
      */
-    public function update(Request $request, string $id)
+    public function show(Client $client)
     {
-        // validate the request
-        $request->validate(
-            [
-                "name" => "required",
-                "email" => "required|email|unique:clients,email," . $id,
-                "phone" => "required",
-            ]
-        );
+        return ApiResponse::success($client);
+    }
 
-        //update the client data in database
-        $client = Client::find($id);
-        if ($client) {
-            $client->update($request->all());
-            return response()->json(
-                [
-                    "message" => "Client updated successfully",
-                    "client" => $client
-                ],
-                200
-            );
-        } else {
-            return response()->json(
-                [
-                    "message" => "Client not found"
-                ],
-                404
-            );
+    /**
+     * Atualiza um cliente específico.
+     * O Route Model Binding também se aplica aqui.
+     */
+    public function update(Request $request, Client $client)
+    {
+        try {
+            $validatedData = $request->validate([
+                "name" => "required|string|max:255",
+                "email" => "required|email|unique:clients,email," . $client->id,
+                "phone" => "required|string|max:20",
+            ]);
+
+            $client->update($validatedData);
+
+            return ApiResponse::success($client);
+
+        } catch (ValidationException $e) {
+            return ApiResponse::validationError($e->errors());
         }
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Remove um cliente do banco de dados.
      */
-    public function destroy(string $id)
+    public function destroy(Client $client)
     {
-        // delete the client by id
-        $client = Client::find($id);
-        if ($client) {
-            $client->delete();
-            return response()->json(
-                [
-                    "message" => "Client deleted successfully"
-                ],
-                200
-            );
-        } else {
-            return response()->json(
-                [
-                    "message" => "Client not found"
-                ],
-                404
-            );
-        }
+        $client->delete();
+
+        return ApiResponse::success(null, "Client deleted successfully");
     }
 }
